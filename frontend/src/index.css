@@ -2,8 +2,8 @@
 
 @theme {
   --color-brand-100: #dbeafe;
-  --color-brand-700: #224cff;
-  --color-brand-900: #1736a4;
+  --color-brand-700: rgb(220, 19, 92);
+  --color-brand-900: #a10f47;
 }
 
 :root {
@@ -14,9 +14,9 @@
   --text: #17212e;
   --muted: #5d6b7c;
   --muted-2: #8090a2;
-  --accent: #224cff;
-  --accent-soft: rgba(34, 76, 255, 0.12);
-  --accent-strong: rgba(34, 76, 255, 0.24);
+  --accent: rgb(220, 19, 92);
+  --accent-soft: rgba(220, 19, 92, 0.12);
+  --accent-strong: rgba(220, 19, 92, 0.24);
   --danger: #b42318;
   --danger-soft: rgba(180, 35, 24, 0.1);
   --visa: #163d9f;
