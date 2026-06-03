@@ -1,18 +1,27 @@
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.card import Card
+from backend.services.card_validation import get_drawer_or_404, validate_card_position
 from backend.schemas.card import CardCreate, CardMove, CardResponse
 
 router = APIRouter(prefix="/cards", tags=["Cards"])
 
 @router.post("/", response_model=CardResponse)
 def add_card(card: CardCreate, db: Session = Depends(get_db)):
+    drawer = get_drawer_or_404(db, card.drawer_id)
+    validate_card_position(drawer, card.row, card.col)
+
     db_card = Card(**card.model_dump())
     db.add(db_card)
-    db.commit()
-    db.refresh(db_card)
-    return db_card
+    try:
+        db.commit()
+        db.refresh(db_card)
+        return db_card
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Card number already exists")
 
 @router.get("/search", response_model=list[CardResponse])
 def search_cards(q: str, db: Session = Depends(get_db)):
@@ -33,13 +42,21 @@ def move_card(card_id: int, move: CardMove, db: Session = Depends(get_db)):
     card = db.query(Card).filter(Card.id == card_id).first()
     if not card:
         raise HTTPException(status_code=404, detail="Card not found")
+
+    drawer = get_drawer_or_404(db, move.drawer_id)
+    validate_card_position(drawer, move.row, move.col)
+
     card.row = move.row
     card.col = move.col
     card.order = move.order
     card.drawer_id = move.drawer_id
-    db.commit()
-    db.refresh(card)
-    return card
+    try:
+        db.commit()
+        db.refresh(card)
+        return card
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Unable to move card")
 
 @router.delete("/{card_id}")
 def delete_card(card_id: int, db: Session = Depends(get_db)):
