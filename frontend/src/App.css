@@ -27,7 +27,6 @@
   padding: 24px 24px 24px 28px;
   min-width: 0;
   background: #ffffff;
-  border-right: 1px solid var(--line);
 }
 
 .app-brand__logo {
@@ -74,9 +73,12 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 24px 24px 24px 0;
+  padding: 24px;
   margin-right: 0;
-  background: #ffffff;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.14), transparent 42%),
+    rgb(192, 21, 72);
+  color: #ffffff;
 }
 
 .search-bar {
@@ -89,7 +91,7 @@
   font-size: 0.72rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .search-bar__field {
@@ -100,7 +102,8 @@
   padding: 0 16px;
   border: 1px solid var(--line);
   border-radius: 0;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(255, 255, 255, 0.22);
   box-shadow: none;
 }
 
@@ -119,7 +122,7 @@
 .search-bar__icon {
   width: 20px;
   height: 20px;
-  color: var(--muted);
+  color: rgb(192, 21, 72);
   flex: 0 0 auto;
 }
 
@@ -127,8 +130,8 @@
   width: 16px;
   height: 16px;
   border-radius: 0;
-  border: 2px solid rgba(34, 76, 255, 0.18);
-  border-top-color: var(--accent);
+  border: 2px solid rgba(192, 21, 72, 0.18);
+  border-top-color: rgb(192, 21, 72);
   animation: spin 0.8s linear infinite;
   flex: 0 0 auto;
 }
@@ -139,10 +142,10 @@
   inset-inline: 0;
   z-index: 20;
   padding: 16px;
-  border: 1px solid var(--line);
+  border: 1px solid rgba(192, 21, 72, 0.18);
   border-radius: 0;
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.12);
   max-height: 520px;
   overflow: auto;
 }
@@ -656,7 +659,7 @@
   }
 
   .app-search {
-    padding: 0 24px 24px;
+    padding: 24px;
   }
 
   .inspector {
@@ -691,7 +694,7 @@
   }
 
   .app-search {
-    padding: 0;
+    padding: 18px;
   }
 
   .board__header,
