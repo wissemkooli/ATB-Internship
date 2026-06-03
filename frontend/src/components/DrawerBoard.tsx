@@ -10,6 +10,19 @@ interface DrawerBoardProps {
   onMoveCard: (cardId: number, row: number, col: number, order: number) => void
 }
 
+const getColumnLabel = (index: number) => {
+  let value = index
+  let label = ''
+
+  while (value > 0) {
+    value -= 1
+    label = String.fromCharCode(65 + (value % 26)) + label
+    value = Math.floor(value / 26)
+  }
+
+  return label
+}
+
 export function DrawerBoard({
   drawer,
   cards,
@@ -20,6 +33,11 @@ export function DrawerBoard({
   const columns = useMemo(
     () => Array.from({ length: drawer.cols }, (_, index) => index + 1),
     [drawer.cols],
+  )
+
+  const columnLabels = useMemo(
+    () => columns.map((col) => getColumnLabel(col)),
+    [columns],
   )
 
   const rows = useMemo(
@@ -69,9 +87,9 @@ export function DrawerBoard({
           }}
         >
           <div className="board__corner" aria-hidden="true" />
-          {columns.map((col) => (
+          {columns.map((col, index) => (
             <div key={col} className="board__axis board__axis--top">
-              {col}
+              {columnLabels[index]}
             </div>
           ))}
         </div>

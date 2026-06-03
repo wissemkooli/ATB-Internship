@@ -39,9 +39,11 @@ export function DrawerCell({
       onDrop={handleDrop}
     >
       <div className="drawer-cell__frame">
-        <span className="drawer-cell__count" aria-label={`${cards.length} cards`}>
-          {cards.length}
-        </span>
+        {cards.length > 0 ? (
+          <span className="drawer-cell__count" aria-label={`${cards.length} cards`}>
+            {cards.length}
+          </span>
+        ) : null}
       </div>
     </button>
   )

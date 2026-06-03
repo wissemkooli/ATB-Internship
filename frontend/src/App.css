@@ -342,9 +342,9 @@
 .board__corner,
 .board__axis {
   min-height: 44px;
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--muted);
+  border: 1px solid rgba(192, 35, 92, 0.28);
+  background: rgba(192, 35, 92, 0.7);
+  color: #ffffff;
 }
 
 .board__corner {
@@ -556,55 +556,6 @@
   border-color: rgba(180, 35, 24, 0.2);
   background: rgba(180, 35, 24, 0.08);
   color: var(--danger);
-}
-
-.bin-zone {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 104px;
-  padding: 18px;
-  border-radius: 0;
-  border: 1px dashed var(--line-strong);
-  background: #ffffff;
-  color: var(--muted);
-  box-shadow: none;
-  transition:
-    border-color 0.16s ease,
-    color 0.16s ease,
-    background-color 0.16s ease,
-    transform 0.16s ease;
-}
-
-.bin-zone.is-active {
-  border-color: rgba(180, 35, 24, 0.42);
-  color: var(--danger);
-  background: rgba(180, 35, 24, 0.06);
-}
-
-.bin-zone__icon {
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: 0;
-  border: 1px solid var(--line);
-  background: var(--surface);
-  color: var(--danger);
-  font-size: 1.2rem;
-  flex: 0 0 auto;
-}
-
-.bin-zone strong {
-  display: block;
-  font-size: 1rem;
-  color: inherit;
-}
-
-.bin-zone p {
-  margin: 4px 0 0;
-  color: inherit;
-  font-size: 0.88rem;
 }
 
 .empty-state {

@@ -1,4 +1,3 @@
-import type { DragEvent } from 'react'
 import { CardPreview } from './CardPreview'
 import type { Card, Drawer } from '../types'
 
@@ -11,9 +10,6 @@ interface SelectionInspectorProps {
   onSelectCard: (card: Card) => void
   onDragCard: (card: Card | null) => void
   onDeleteCard: (cardId: number) => void
-  onBinDrop: (cardId: number) => void
-  onBinDragOver: (event: DragEvent<HTMLDivElement>) => void
-  binActive: boolean
 }
 
 export function SelectionInspector({
@@ -25,9 +21,6 @@ export function SelectionInspector({
   onSelectCard,
   onDragCard,
   onDeleteCard,
-  onBinDrop,
-  onBinDragOver,
-  binActive,
 }: SelectionInspectorProps) {
   return (
     <aside className="inspector">
@@ -135,26 +128,6 @@ export function SelectionInspector({
             <span>Pick a card from the stack or search results.</span>
           </div>
         )}
-      </section>
-
-      <section
-        className={['bin-zone', binActive ? 'is-active' : ''].filter(Boolean).join(' ')}
-        onDragOver={onBinDragOver}
-        onDrop={(event) => {
-          event.preventDefault()
-          const cardId = Number(event.dataTransfer.getData('text/plain'))
-          if (Number.isFinite(cardId) && cardId > 0) {
-            onBinDrop(cardId)
-          }
-        }}
-      >
-        <div className="bin-zone__icon" aria-hidden="true">
-          X
-        </div>
-        <div>
-          <strong>Bin</strong>
-          <p>Drop a card here to delete it.</p>
-        </div>
       </section>
     </aside>
   )

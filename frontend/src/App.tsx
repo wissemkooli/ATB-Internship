@@ -32,7 +32,6 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
-  const [draggingCardId, setDraggingCardId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
 
   const { results: searchResults, loading: searchLoading, error: searchError } = useCardSearch(
@@ -136,8 +135,6 @@ function App() {
     }
   }
 
-  const binHasActiveDrag = draggingCardId !== null
-
   return (
     <div className="app-shell">
       <header className="app-header">
@@ -157,9 +154,7 @@ function App() {
             loading={searchLoading}
             error={searchError}
             onSelectResult={handleSelectSearchResult}
-            onDragCard={(card) => {
-              setDraggingCardId(card?.id ?? null)
-            }}
+            onDragCard={() => {}}
           />
         </div>
       </header>
@@ -206,16 +201,8 @@ function App() {
           selectedCard={selectedCard}
           selectedCardId={selectedCardId}
           onSelectCard={handleSelectCard}
-          onDragCard={(card) => {
-            setDraggingCardId(card?.id ?? null)
-          }}
+          onDragCard={() => {}}
           onDeleteCard={handleDeleteCard}
-          onBinDrop={handleDeleteCard}
-          onBinDragOver={(event) => {
-            event.preventDefault()
-            event.dataTransfer.dropEffect = 'move'
-          }}
-          binActive={binHasActiveDrag}
         />
       </main>
     </div>
