@@ -9,6 +9,7 @@ class AuditActionType(str, Enum):
     search = "search"
     login = "login"
     logout = "logout"
+    create = "create"
 
 
 class AuditLogCreate(BaseModel):

@@ -10,6 +10,7 @@ class AuditActionType(enum.Enum):
     search = "search"
     login = "login"
     logout = "logout"
+    create = "create"
 
 
 class AuditLog(Base):

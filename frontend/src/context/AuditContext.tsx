@@ -11,7 +11,7 @@ import { useAuth } from './AuthContext'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-export type AuditActionType = 'move' | 'delete' | 'search' | 'login' | 'logout'
+export type AuditActionType = 'move' | 'delete' | 'search' | 'login' | 'logout' | 'create'
 
 export interface AuditEntry {
   id: number

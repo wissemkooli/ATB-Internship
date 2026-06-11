@@ -24,8 +24,17 @@ export function AddCardModal({ isOpen, onClose, onSubmit, drawerName, row, col }
     e.preventDefault()
     setLoading(true)
     setError(null)
+    
+    let formattedDate = expirationDate
+    // Parse MM/YY or MM/YYYY to YYYY-MM-01 for the backend
+    if (expirationDate.includes('/')) {
+      const [month, year] = expirationDate.split('/')
+      const fullYear = year.length === 2 ? `20${year}` : year
+      formattedDate = `${fullYear}-${month.padStart(2, '0')}-01`
+    }
+    
     try {
-      await onSubmit(cardholderName, cardNumber, expirationDate, cardType)
+      await onSubmit(cardholderName, cardNumber, formattedDate, cardType)
       setCardholderName('')
       setCardNumber('')
       setExpirationDate('')
