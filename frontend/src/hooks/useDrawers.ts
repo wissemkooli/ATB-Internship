@@ -36,6 +36,17 @@ export function useDrawers() {
     setSelectedDrawerId(drawerId)
   }, [])
 
+  const createDrawer = useCallback(async (payload: import('../types').DrawerCreate) => {
+    try {
+      const newDrawer = await api.createDrawer(payload)
+      setDrawers((current) => [...current, newDrawer])
+      setSelectedDrawerId(newDrawer.id)
+      return newDrawer
+    } catch (err) {
+      throw err
+    }
+  }, [])
+
   return {
     drawers,
     selectedDrawer,
@@ -43,6 +54,7 @@ export function useDrawers() {
     loading,
     error,
     selectDrawer,
+    createDrawer,
     refreshDrawers: loadDrawers,
     setSelectedDrawerId,
   }

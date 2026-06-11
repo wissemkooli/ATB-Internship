@@ -7,6 +7,8 @@ import { SearchResults } from './components/SearchResults'
 import { SelectionInspector } from './components/SelectionInspector'
 import { Login } from './components/Login'
 import { AdminDashboard } from './components/AdminDashboard'
+import { AddDrawerModal } from './components/AddDrawerModal'
+import { AddCardModal } from './components/AddCardModal'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AuditProvider, useAudit } from './context/AuditContext'
 import { useCardSearch } from './hooks/useCardSearch'
@@ -37,6 +39,7 @@ function AppInner() {
     loading: drawersLoading,
     error: drawersError,
     selectDrawer,
+    createDrawer,
   } = useDrawers()
 
   const {
@@ -47,12 +50,16 @@ function AppInner() {
     getCardById,
     moveCard,
     deleteCard,
+    addCard,
   } = useDrawerCards(selectedDrawerId)
 
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null)
   const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const [isAddDrawerModalOpen, setIsAddDrawerModalOpen] = useState(false)
+  const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false)
 
   const { results: searchResults, loading: searchLoading, error: searchError } = useCardSearch(
     searchQuery,
@@ -171,6 +178,48 @@ function AppInner() {
     }
   }
 
+  const handleAddDrawerSubmit = async (name: string, rows: number, cols: number) => {
+    try {
+      const newDrawer = await createDrawer({ name, rows, cols })
+      addLog({
+        operator: user?.displayName ?? 'Unknown',
+        actionType: 'create',
+        description: `Created Drawer #${newDrawer.id} "${newDrawer.name}"`,
+      })
+    } catch (err) {
+      throw err
+    }
+  }
+
+  const handleAddCardSubmit = async (cardholder_name: string, card_number: string, expiration_date: string, card_type: import('./types').CardType) => {
+    if (selectedDrawerId === null || !selectedCellKey) return
+    const [rowStr, colStr] = selectedCellKey.split(':')
+    const row = parseInt(rowStr, 10)
+    const col = parseInt(colStr, 10)
+    const order = selectedCellCards.length + 1
+
+    try {
+      const newCard = await addCard({
+        cardholder_name,
+        card_number,
+        expiration_date,
+        card_type,
+        drawer_id: selectedDrawerId,
+        row,
+        col,
+        order,
+      })
+      addLog({
+        operator: user?.displayName ?? 'Unknown',
+        actionType: 'create',
+        description: `Added Card #${newCard.id} to Drawer #${selectedDrawerId} (Row ${row}, Col ${col})`,
+      })
+      setSelectedCardId(newCard.id)
+    } catch (err) {
+      throw err
+    }
+  }
+
   // ── If not logged in ──────────────────────────────────────────────────────
 
   if (!user) {
@@ -203,12 +252,33 @@ function AppInner() {
     </header>
   )
 
+  const modals = (
+    <>
+      <AddDrawerModal
+        isOpen={isAddDrawerModalOpen}
+        onClose={() => setIsAddDrawerModalOpen(false)}
+        onSubmit={handleAddDrawerSubmit}
+      />
+      {selectedDrawer && selectedCellKey && (
+        <AddCardModal
+          isOpen={isAddCardModalOpen}
+          onClose={() => setIsAddCardModalOpen(false)}
+          onSubmit={handleAddCardSubmit}
+          drawerName={selectedDrawer.name}
+          row={parseInt(selectedCellKey.split(':')[0], 10)}
+          col={parseInt(selectedCellKey.split(':')[1], 10)}
+        />
+      )}
+    </>
+  )
+
   // ── Admin view ────────────────────────────────────────────────────────────
 
   if (user.role === 'admin') {
     return (
       <div className="app-shell">
         {header}
+        {modals}
 
         {/* Admin navigation bar */}
         <nav className="nav-bar" aria-label="Admin navigation">
@@ -300,6 +370,8 @@ function AppInner() {
             onSelectCard={handleSelectCard}
             onMoveCard={handleMoveCard}
             onDeleteCard={handleDeleteCard}
+            onAddDrawerClick={() => setIsAddDrawerModalOpen(true)}
+            onAddCardClick={() => setIsAddCardModalOpen(true)}
           />
         ) : (
           <AdminDashboard />
@@ -313,6 +385,7 @@ function AppInner() {
   return (
     <div className="app-shell">
       {header}
+      {modals}
 
       <div className="nav-bar">
         <div className="nav-bar__right">
@@ -350,6 +423,8 @@ function AppInner() {
         onSelectCard={handleSelectCard}
         onMoveCard={handleMoveCard}
         onDeleteCard={handleDeleteCard}
+        onAddDrawerClick={() => setIsAddDrawerModalOpen(true)}
+        onAddCardClick={() => setIsAddCardModalOpen(true)}
       />
     </div>
   )
@@ -376,6 +451,8 @@ interface WorkspaceViewProps {
   onSelectCard: (card: Card) => void
   onMoveCard: (cardId: number, row: number, col: number, order: number) => void
   onDeleteCard: (cardId: number) => void
+  onAddDrawerClick: () => void
+  onAddCardClick: () => void
 }
 
 function WorkspaceView({
@@ -397,6 +474,8 @@ function WorkspaceView({
   onSelectCard,
   onMoveCard,
   onDeleteCard,
+  onAddDrawerClick,
+  onAddCardClick,
 }: WorkspaceViewProps) {
   return (
     <main className="workspace">
@@ -413,6 +492,7 @@ function WorkspaceView({
               drawers={drawers}
               selectedDrawerId={selectedDrawerId}
               onSelectDrawer={onSelectDrawer}
+              onAddDrawerClick={onAddDrawerClick}
             />
 
             {cardsError ? (
@@ -443,6 +523,7 @@ function WorkspaceView({
         onSelectCard={onSelectCard}
         onDragCard={() => {}}
         onDeleteCard={onDeleteCard}
+        onAddCardClick={onAddCardClick}
       />
     </main>
   )

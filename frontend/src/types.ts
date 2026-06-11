@@ -7,6 +7,17 @@ export interface Drawer {
   cols: number
 }
 
+export interface CardCreate {
+  cardholder_name: string
+  card_number: string
+  expiration_date: string
+  card_type: CardType
+  row: number
+  col: number
+  order: number
+  drawer_id: number
+}
+
 export interface Card {
   id: number
   cardholder_name: string
@@ -17,6 +28,12 @@ export interface Card {
   col: number
   order: number
   drawer_id: number
+}
+
+export interface DrawerCreate {
+  name: string
+  rows: number
+  cols: number
 }
 
 export interface CardMovePayload {

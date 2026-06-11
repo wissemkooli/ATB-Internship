@@ -10,6 +10,7 @@ interface SelectionInspectorProps {
   onSelectCard: (card: Card) => void
   onDragCard: (card: Card | null) => void
   onDeleteCard: (cardId: number) => void
+  onAddCardClick: () => void
 }
 
 export function SelectionInspector({
@@ -21,6 +22,7 @@ export function SelectionInspector({
   onSelectCard,
   onDragCard,
   onDeleteCard,
+  onAddCardClick,
 }: SelectionInspectorProps) {
   return (
     <aside className="inspector">
@@ -70,6 +72,15 @@ export function SelectionInspector({
                   <span>Drop a card here to add it to the stack.</span>
                 </div>
               )}
+              
+              <button
+                type="button"
+                className="action-button"
+                onClick={onAddCardClick}
+                style={{ marginTop: '10px', width: '100%', borderStyle: 'dashed', background: 'transparent', color: 'var(--text)' }}
+              >
+                + Add Card to Case
+              </button>
             </div>
           </>
         ) : (

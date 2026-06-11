@@ -4,9 +4,10 @@ interface DrawerTabsProps {
   drawers: Drawer[]
   selectedDrawerId: number | null
   onSelectDrawer: (drawerId: number) => void
+  onAddDrawerClick: () => void
 }
 
-export function DrawerTabs({ drawers, selectedDrawerId, onSelectDrawer }: DrawerTabsProps) {
+export function DrawerTabs({ drawers, selectedDrawerId, onSelectDrawer, onAddDrawerClick }: DrawerTabsProps) {
   return (
     <div className="drawer-tabs" role="tablist" aria-label="Drawers">
       {drawers.map((drawer) => {
@@ -28,6 +29,15 @@ export function DrawerTabs({ drawers, selectedDrawerId, onSelectDrawer }: Drawer
           </button>
         )
       })}
+      
+      <button
+        type="button"
+        className="drawer-tabs__item"
+        onClick={onAddDrawerClick}
+        style={{ borderStyle: 'dashed', background: 'transparent' }}
+      >
+        <span className="drawer-tabs__name" style={{ color: 'var(--muted)' }}>+ Add Drawer</span>
+      </button>
     </div>
   )
 }

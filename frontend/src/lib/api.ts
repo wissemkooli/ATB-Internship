@@ -1,4 +1,4 @@
-import type { Card, CardMovePayload, Drawer, SearchResultCard } from '../types'
+import type { Card, CardCreate, CardMovePayload, Drawer, DrawerCreate, SearchResultCard } from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -38,9 +38,19 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getDrawers: () => request<Drawer[]>('/drawers/'),
+  createDrawer: (payload: DrawerCreate) =>
+    request<Drawer>('/drawers/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   getDrawerCards: (drawerId: number) => request<Card[]>(`/drawers/${drawerId}/cards`),
   searchCards: (query: string) =>
     request<Card[]>(`/cards/search?q=${encodeURIComponent(query)}`),
+  addCard: (payload: CardCreate) =>
+    request<Card>('/cards/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
   moveCard: (cardId: number, payload: CardMovePayload) =>
     request<Card>(`/cards/${cardId}/move`, {
       method: 'PATCH',

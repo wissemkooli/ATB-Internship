@@ -119,6 +119,16 @@ export function useDrawerCards(drawerId: number | null) {
     }
   }, [])
 
+  const addCard = useCallback(async (payload: import('../types').CardCreate) => {
+    try {
+      const newCard = await api.addCard(payload)
+      setCards((current) => sortCards([...current, newCard]))
+      return newCard
+    } catch (requestError) {
+      throw requestError
+    }
+  }, [])
+
   const cardsByCell = useMemo(() => {
     const grouped = new Map<string, Card[]>()
 
@@ -148,6 +158,7 @@ export function useDrawerCards(drawerId: number | null) {
     getCardById,
     moveCard,
     deleteCard,
+    addCard,
     setCards,
   }
 }
