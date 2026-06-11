@@ -9,6 +9,7 @@ import { useCardSearch } from './hooks/useCardSearch'
 import { useDrawerCards } from './hooks/useDrawerCards'
 import { useDrawers } from './hooks/useDrawers'
 import { cellKey, type Card, type SearchResultCard } from './types'
+import { api } from './lib/api'
 import './App.css'
 
 function App() {
@@ -58,6 +59,10 @@ function App() {
   const handleSelectCell = (row: number, col: number) => {
     const nextCellKey = cellKey(row, col)
 
+    api.highlightCompartment(row, col).catch((err) => {
+      console.error('Failed to highlight compartment:', err)
+    })
+
     if (selectedCellKey === nextCellKey) {
       setSelectedCellKey(null)
       setSelectedCardId(null)
@@ -77,6 +82,10 @@ function App() {
   }
 
   const handleSelectSearchResult = (card: SearchResultCard) => {
+    api.highlightCard(card.id).catch((err) => {
+      console.error('Failed to highlight card:', err)
+    })
+
     selectDrawer(card.drawer_id)
     setSelectedCellKey(cellKey(card.row, card.col))
     setSelectedCardId(card.id)

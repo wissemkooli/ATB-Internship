@@ -40,9 +40,10 @@ def delete_drawer(drawer_id: int, db: Session = Depends(get_db)):
     drawer = db.query(Drawer).filter(Drawer.id == drawer_id).first()
     if not drawer:
         raise HTTPException(status_code=404, detail="Drawer not found")
-    cards = db.query(Card).filter(Card.drawer_id == drawer_id).first()
-    if cards:
-        raise HTTPException(status_code=400, detail="Drawer still has cards, remove them first")
+    
+    # Delete all cards associated with this drawer
+    db.query(Card).filter(Card.drawer_id == drawer_id).delete()
+    
     db.delete(drawer)
     db.commit()
-    return {"message": "Drawer deleted"}
+    return {"message": "Drawer and all its associated cards deleted successfully"}

@@ -50,6 +50,15 @@ export const api = {
     request<{ message: string }>(`/cards/${cardId}`, {
       method: 'DELETE',
     }),
+  highlightCompartment: (row: number, col: number) =>
+    request<{ message: string }>('/hardware/highlight/compartment', {
+      method: 'POST',
+      body: JSON.stringify({ row, col }),
+    }),
+  highlightCard: (cardId: number) =>
+    request<{ message: string }>(`/hardware/highlight/${cardId}`, {
+      method: 'POST',
+    }),
 }
 
 export function enrichSearchResults(cards: Card[], drawers: Drawer[]): SearchResultCard[] {

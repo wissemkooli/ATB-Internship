@@ -2,6 +2,9 @@ import os
 import httpx
 from fastapi import HTTPException
 
+# Reuse the HTTP client to avoid TCP handshake latency on every request
+client = httpx.AsyncClient()
+
 async def highlight_card(row: int, col: int):
     # Note: A .env.example file does not exist in this project.
     # The ESP32_IP must be defined in the .env file (e.g., ESP32_IP=192.168.1.xxx)
@@ -15,9 +18,8 @@ async def highlight_card(row: int, col: int):
     url = f"http://{esp32_ip}/light?row={row}&col={col}"
 
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(url, timeout=5.0)
-            response.raise_for_status()
+        response = await client.get(url, timeout=5.0)
+        response.raise_for_status()
     except httpx.TimeoutException:
         raise HTTPException(
             status_code=503,
