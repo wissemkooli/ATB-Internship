@@ -1,29 +1,59 @@
 import { CardPreview } from './CardPreview'
-import type { Card, Drawer } from '../types'
+import { CheckPreview } from './CheckPreview'
+import type { Card, Check, Drawer, DrawerItem } from '../types'
+import { isCheck } from '../types'
 
 interface SelectionInspectorProps {
   drawer: Drawer | null
   selectedCellKey: string | null
-  selectedCellCards: Card[]
-  selectedCard: Card | null
-  selectedCardId: number | null
-  onSelectCard: (card: Card) => void
-  onDragCard: (card: Card | null) => void
-  onDeleteCard: (cardId: number) => void
-  onAddCardClick: () => void
+  selectedCellItems: DrawerItem[]
+  selectedItem: DrawerItem | null
+  selectedItemId: number | null
+  onSelectItem: (item: DrawerItem) => void
+  onDragItem: (item: DrawerItem | null) => void
+  onDeleteItem: (itemId: number) => void
+  onAddItemClick: () => void
 }
 
 export function SelectionInspector({
   drawer,
   selectedCellKey,
-  selectedCellCards,
-  selectedCard,
-  selectedCardId,
-  onSelectCard,
-  onDragCard,
-  onDeleteCard,
-  onAddCardClick,
+  selectedCellItems,
+  selectedItem,
+  selectedItemId,
+  onSelectItem,
+  onDragItem,
+  onDeleteItem,
+  onAddItemClick,
 }: SelectionInspectorProps) {
+  const isCheckMode = drawer?.drawer_type === 'checks'
+  const itemLabel = isCheckMode ? 'checks' : 'cards'
+  const titleLabel = isCheckMode ? 'check' : 'card'
+
+  const renderPreview = (item: DrawerItem, selected = false) => {
+    if (isCheck(item)) {
+      return (
+        <CheckPreview
+          check={item as Check}
+          selected={selected}
+          onClick={() => onSelectItem(item)}
+          onDragStart={() => onDragItem(item)}
+          onDragEnd={() => onDragItem(null)}
+        />
+      )
+    }
+
+    return (
+      <CardPreview
+        card={item as Card}
+        selected={selected}
+        onClick={() => onSelectItem(item)}
+        onDragStart={() => onDragItem(item)}
+        onDragEnd={() => onDragItem(null)}
+      />
+    )
+  }
+
   return (
     <aside className="inspector">
       <section className="panel">
@@ -38,17 +68,17 @@ export function SelectionInspector({
           <>
             <div className="panel__meta">
               <span>Case {selectedCellKey.replace(':', ' - ')}</span>
-              <span>{selectedCellCards.length} cards</span>
+              <span>{selectedCellItems.length} {itemLabel}</span>
             </div>
 
             <div className="inspector-stack">
-              {selectedCellCards.length > 0 ? (
-                selectedCellCards.map((card, index) => (
+              {selectedCellItems.length > 0 ? (
+                selectedCellItems.map((item, index) => (
                   <div
-                    key={card.id}
+                    key={item.id}
                     className={[
                       'inspector-stack__card',
-                      selectedCardId === card.id ? 'is-active' : '',
+                      selectedItemId === item.id ? 'is-active' : '',
                     ]
                       .filter(Boolean)
                       .join(' ')}
@@ -57,29 +87,23 @@ export function SelectionInspector({
                       zIndex: index + 1,
                     }}
                   >
-                    <CardPreview
-                      card={card}
-                      selected={selectedCardId === card.id}
-                      onClick={() => onSelectCard(card)}
-                      onDragStart={() => onDragCard(card)}
-                      onDragEnd={() => onDragCard(null)}
-                    />
+                    {renderPreview(item, selectedItemId === item.id)}
                   </div>
                 ))
               ) : (
                 <div className="empty-state">
-                  <p>No cards in this case.</p>
-                  <span>Drop a card here to add it to the stack.</span>
+                  <p>No {itemLabel} in this case.</p>
+                  <span>Drop a {titleLabel} here to add it to the stack.</span>
                 </div>
               )}
               
               <button
                 type="button"
                 className="action-button"
-                onClick={onAddCardClick}
+                onClick={onAddItemClick}
                 style={{ marginTop: '10px', width: '100%', borderStyle: 'dashed', background: 'transparent', color: 'var(--text)' }}
               >
-                + Add Card to Case
+                + Add {isCheckMode ? 'Check' : 'Card'} to Case
               </button>
             </div>
           </>
@@ -94,19 +118,15 @@ export function SelectionInspector({
       <section className="panel panel--detail">
         <div className="panel__header">
           <div>
-            <div className="panel__eyebrow">Card detail</div>
-            <h2 className="panel__title">Active card</h2>
+            <div className="panel__eyebrow">{isCheckMode ? 'Check detail' : 'Card detail'}</div>
+            <h2 className="panel__title">Active {titleLabel}</h2>
           </div>
-          <span className="panel__status">{selectedCard ? `#${selectedCard.order}` : 'Idle'}</span>
+          <span className="panel__status">{selectedItem ? `#${selectedItem.order}` : 'Idle'}</span>
         </div>
 
-        {selectedCard ? (
+        {selectedItem ? (
           <>
-            <CardPreview
-              card={selectedCard}
-              onDragStart={() => onDragCard(selectedCard)}
-              onDragEnd={() => onDragCard(null)}
-            />
+            {renderPreview(selectedItem)}
 
             <div className="card-summary">
               <div className="card-summary__item">
@@ -116,27 +136,47 @@ export function SelectionInspector({
               <div className="card-summary__item">
                 <span>Case</span>
                 <strong>
-                  {selectedCard.row} / {selectedCard.col}
+                  {selectedItem.row} / {selectedItem.col}
                 </strong>
               </div>
               <div className="card-summary__item">
                 <span>Order</span>
-                <strong>#{selectedCard.order}</strong>
+                <strong>#{selectedItem.order}</strong>
               </div>
+              {isCheck(selectedItem) ? (
+                <>
+                  <div className="card-summary__item">
+                    <span>Client</span>
+                    <strong>{selectedItem.client_name}</strong>
+                  </div>
+                  <div className="card-summary__item">
+                    <span>Number</span>
+                    <strong>{selectedItem.check_number}</strong>
+                  </div>
+                  <div className="card-summary__item">
+                    <span>Carnet</span>
+                    <strong>{selectedItem.carnet_size}</strong>
+                  </div>
+                  <div className="card-summary__item">
+                    <span>Montant</span>
+                    <strong>{selectedItem.montant.toFixed(2)} TND</strong>
+                  </div>
+                </>
+              ) : null}
             </div>
 
             <button
               type="button"
               className="action-button action-button--danger"
-              onClick={() => onDeleteCard(selectedCard.id)}
+              onClick={() => onDeleteItem(selectedItem.id)}
             >
-              Delete selected card
+              Delete selected {titleLabel}
             </button>
           </>
         ) : (
           <div className="empty-state">
-            <p>No card selected.</p>
-            <span>Pick a card from the stack or search results.</span>
+            <p>No {titleLabel} selected.</p>
+            <span>Pick a {titleLabel} from the stack or search results.</span>
           </div>
         )}
       </section>

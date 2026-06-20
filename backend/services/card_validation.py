@@ -23,3 +23,11 @@ def validate_card_position(drawer: Drawer, row: int, col: int) -> None:
             status_code=400,
             detail=f"col must be between 1 and {drawer.cols}",
         )
+
+
+def validate_drawer_type(drawer: Drawer, drawer_type: str) -> None:
+    if drawer.drawer_type.value != drawer_type:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Drawer is configured for {drawer.drawer_type.value}",
+        )

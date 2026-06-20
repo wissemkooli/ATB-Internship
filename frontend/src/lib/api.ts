@@ -1,12 +1,34 @@
-import type { Card, CardCreate, CardMovePayload, Drawer, DrawerCreate, SearchResultCard } from '../types'
+import type {
+  Card,
+  CardCreate,
+  CardMovePayload,
+  Check,
+  CheckCreate,
+  CheckMovePayload,
+  Drawer,
+  DrawerCreate,
+  SearchResultCard,
+  SearchResultCheck,
+} from '../types'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+const STORAGE_KEY_TOKEN = 'atb_auth_token'
+
+function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {}
+  const token = localStorage.getItem(STORAGE_KEY_TOKEN)
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+  return headers
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...getAuthHeaders(),
       ...(init?.headers ?? {}),
     },
   })
@@ -44,10 +66,19 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   getDrawerCards: (drawerId: number) => request<Card[]>(`/drawers/${drawerId}/cards`),
+  getDrawerChecks: (drawerId: number) => request<Check[]>(`/drawers/${drawerId}/checks`),
   searchCards: (query: string) =>
     request<Card[]>(`/cards/search?q=${encodeURIComponent(query)}`),
+  searchChecks: (query: string) =>
+    request<Check[]>(`/checks/search?q=${encodeURIComponent(query)}`),
+  getCheck: (checkId: number) => request<Check>(`/checks/${checkId}`),
   addCard: (payload: CardCreate) =>
     request<Card>('/cards/', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  addCheck: (payload: CheckCreate) =>
+    request<Check>('/checks/', {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
@@ -56,8 +87,17 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(payload),
     }),
+  moveCheck: (checkId: number, payload: CheckMovePayload) =>
+    request<Check>(`/checks/${checkId}/move`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
   deleteCard: (cardId: number) =>
     request<{ message: string }>(`/cards/${cardId}`, {
+      method: 'DELETE',
+    }),
+  deleteCheck: (checkId: number) =>
+    request<void>(`/checks/${checkId}`, {
       method: 'DELETE',
     }),
   highlightCompartment: (row: number, col: number) =>
@@ -77,5 +117,14 @@ export function enrichSearchResults(cards: Card[], drawers: Drawer[]): SearchRes
   return cards.map((card) => ({
     ...card,
     drawer_name: drawerNameById.get(card.drawer_id) ?? `Drawer ${card.drawer_id}`,
+  }))
+}
+
+export function enrichCheckSearchResults(checks: Check[], drawers: Drawer[]): SearchResultCheck[] {
+  const drawerNameById = new Map(drawers.map((drawer) => [drawer.id, drawer.name]))
+
+  return checks.map((check) => ({
+    ...check,
+    drawer_name: drawerNameById.get(check.drawer_id) ?? `Drawer ${check.drawer_id}`,
   }))
 }

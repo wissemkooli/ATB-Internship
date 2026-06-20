@@ -1,33 +1,35 @@
 import type { DragEvent } from 'react'
-import type { Card } from '../types'
+import type { DrawerItem } from '../types'
 
 interface DrawerCellProps {
   row: number
   col: number
-  cards: Card[]
+  items: DrawerItem[]
   selected: boolean
   onSelectCell: (row: number, col: number) => void
-  onMoveCard: (cardId: number, row: number, col: number, order: number) => void
+  onMoveItem: (itemId: number, row: number, col: number, order: number) => void
 }
 
 export function DrawerCell({
   row,
   col,
-  cards,
+  items,
   selected,
   onSelectCell,
-  onMoveCard,
+  onMoveItem,
 }: DrawerCellProps) {
+  const isOccupied = items.length > 0
+
   const handleDrop = (event: DragEvent<HTMLButtonElement>) => {
     event.preventDefault()
-    const cardId = Number(event.dataTransfer.getData('text/plain'))
+    const itemId = Number(event.dataTransfer.getData('text/plain'))
 
-    if (!Number.isFinite(cardId) || cardId <= 0) {
+    if (!Number.isFinite(itemId) || itemId <= 0) {
       return
     }
 
-    const nextOrder = cards.some((card) => card.id === cardId) ? cards.length : cards.length + 1
-    onMoveCard(cardId, row, col, nextOrder)
+    const nextOrder = items.some((item) => item.id === itemId) ? items.length : items.length + 1
+    onMoveItem(itemId, row, col, nextOrder)
   }
 
   return (
@@ -39,11 +41,13 @@ export function DrawerCell({
       onDrop={handleDrop}
     >
       <div className="drawer-cell__frame">
-        {cards.length > 0 ? (
-          <span className="drawer-cell__count" aria-label={`${cards.length} cards`}>
-            {cards.length}
-          </span>
-        ) : null}
+        <span
+          className={[
+            'drawer-cell__status-dot',
+            isOccupied ? 'drawer-cell__status-dot--occupied' : 'drawer-cell__status-dot--empty',
+          ].join(' ')}
+          aria-hidden="true"
+        />
       </div>
     </button>
   )

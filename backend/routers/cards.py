@@ -1,16 +1,25 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models.card import Card
-from backend.services.card_validation import get_drawer_or_404, validate_card_position
+from backend.models.user import User
+from backend.services.auth import get_current_user_optional
+from backend.services.card_validation import get_drawer_or_404, validate_card_position, validate_drawer_type
+from backend.services.email_service import send_card_added_notification
 from backend.schemas.card import CardCreate, CardMove, CardResponse
 
 router = APIRouter(prefix="/cards", tags=["Cards"])
 
 @router.post("/", response_model=CardResponse)
-def add_card(card: CardCreate, db: Session = Depends(get_db)):
+def add_card(
+    card: CardCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User | None = Depends(get_current_user_optional),
+):
     drawer = get_drawer_or_404(db, card.drawer_id)
+    validate_drawer_type(drawer, "cards")
     validate_card_position(drawer, card.row, card.col)
 
     db_card = Card(**card.model_dump())
@@ -18,6 +27,12 @@ def add_card(card: CardCreate, db: Session = Depends(get_db)):
     try:
         db.commit()
         db.refresh(db_card)
+        background_tasks.add_task(
+            send_card_added_notification,
+            card_data=db_card.__dict__.copy(),
+            operator_username=current_user.username if current_user else "unknown",
+            drawer_name=drawer.name,
+        )
         return db_card
     except IntegrityError:
         db.rollback()

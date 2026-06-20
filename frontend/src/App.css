@@ -399,21 +399,22 @@
   height: 100%;
 }
 
-.drawer-cell__count {
+.drawer-cell__status-dot {
   position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 0;
-  border-radius: 0;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font-size: 1.05rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0.06em;
-  z-index: 1;
+  top: 8px;
+  right: 8px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #ffffff;
+}
+
+.drawer-cell__status-dot--occupied {
+  background: #e11d74;
+}
+
+.drawer-cell__status-dot--empty {
+  background: #22c55e;
 }
 
 .inspector {

@@ -1,13 +1,15 @@
 import { CardPreview } from './CardPreview'
-import type { SearchResultCard } from '../types'
+import { CheckPreview } from './CheckPreview'
+import type { SearchResultItem } from '../types'
+import { isCheck } from '../types'
 
 interface SearchResultsProps {
-  results: SearchResultCard[]
+  results: SearchResultItem[]
   query: string
   loading: boolean
   error: string | null
-  onSelectResult: (card: SearchResultCard) => void
-  onDragCard: (card: SearchResultCard | null) => void
+  onSelectResult: (item: SearchResultItem) => void
+  onDragItem: (item: SearchResultItem | null) => void
 }
 
 export function SearchResults({
@@ -16,7 +18,7 @@ export function SearchResults({
   loading,
   error,
   onSelectResult,
-  onDragCard,
+  onDragItem,
 }: SearchResultsProps) {
   if (query.trim().length < 2 && !loading && !error) {
     return null
@@ -32,18 +34,27 @@ export function SearchResults({
       {error ? <div className="search-results__error">{error}</div> : null}
 
       {!error && results.length === 0 && !loading ? (
-        <div className="search-results__empty">No cards matched this query.</div>
+        <div className="search-results__empty">No items matched this query.</div>
       ) : null}
 
       <div className="search-results__list">
-        {results.map((card) => (
-          <div key={card.id} className="search-results__item">
-            <CardPreview
-              card={card}
-              onClick={() => onSelectResult(card)}
-              onDragStart={() => onDragCard(card)}
-              onDragEnd={() => onDragCard(null)}
-            />
+        {results.map((item) => (
+          <div key={`${isCheck(item) ? 'check' : 'card'}-${item.id}`} className="search-results__item">
+            {isCheck(item) ? (
+              <CheckPreview
+                check={item}
+                onClick={() => onSelectResult(item)}
+                onDragStart={() => onDragItem(item)}
+                onDragEnd={() => onDragItem(null)}
+              />
+            ) : (
+              <CardPreview
+                card={item}
+                onClick={() => onSelectResult(item)}
+                onDragStart={() => onDragItem(item)}
+                onDragEnd={() => onDragItem(null)}
+              />
+            )}
           </div>
         ))}
       </div>

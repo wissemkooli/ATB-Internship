@@ -9,29 +9,33 @@ import { Login } from './components/Login'
 import { AdminDashboard } from './components/AdminDashboard'
 import { AddDrawerModal } from './components/AddDrawerModal'
 import { AddCardModal } from './components/AddCardModal'
+import { AddCheckModal } from './components/AddCheckModal'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { AuditProvider, useAudit } from './context/AuditContext'
 import { useCardSearch } from './hooks/useCardSearch'
+import { useCheckSearch } from './hooks/useCheckSearch'
 import { useDrawerCards } from './hooks/useDrawerCards'
+import { useDrawerChecks } from './hooks/useDrawerChecks'
 import { useDrawers } from './hooks/useDrawers'
-import { cellKey, type Card, type SearchResultCard } from './types'
+import {
+  cellKey,
+  isCheck,
+  type CardType,
+  type CarnetSize,
+  type DrawerItem,
+  type DrawerType,
+  type SearchResultItem,
+} from './types'
 import { api } from './lib/api'
 import './App.css'
 
-// ─── View types ──────────────────────────────────────────────────────────────
-
 type AdminView = 'workspace' | 'dashboard'
-
-// ─── Inner app (needs auth context) ─────────────────────────────────────────
 
 function AppInner() {
   const { user, logout } = useAuth()
   const { addLog } = useAudit()
-
-  // Admin navigation state
   const [adminView, setAdminView] = useState<AdminView>('workspace')
 
-  // ── Drawer / card state (existing) ────────────────────────────────────────
   const {
     drawers,
     selectedDrawer,
@@ -42,6 +46,10 @@ function AppInner() {
     createDrawer,
   } = useDrawers()
 
+  const activeDrawerType: DrawerType = selectedDrawer?.drawer_type ?? 'cards'
+  const cardDrawerId = activeDrawerType === 'cards' ? selectedDrawerId : null
+  const checkDrawerId = activeDrawerType === 'checks' ? selectedDrawerId : null
+
   const {
     cards,
     cardsByCell,
@@ -51,32 +59,52 @@ function AppInner() {
     moveCard,
     deleteCard,
     addCard,
-  } = useDrawerCards(selectedDrawerId)
+  } = useDrawerCards(cardDrawerId)
 
-  const [searchQuery, setSearchQuery] = useState('')
+  const {
+    checks,
+    checksByCell,
+    loading: checksLoading,
+    error: checksError,
+    getCheckById,
+    moveCheck,
+    deleteCheck,
+    addCheck,
+  } = useDrawerChecks(checkDrawerId)
+
+  const [cardSearchQuery, setCardSearchQuery] = useState('')
+  const checkSearch = useCheckSearch(drawers)
   const [selectedCellKey, setSelectedCellKey] = useState<string | null>(null)
-  const [selectedCardId, setSelectedCardId] = useState<number | null>(null)
+  const [selectedItemId, setSelectedItemId] = useState<number | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-
   const [isAddDrawerModalOpen, setIsAddDrawerModalOpen] = useState(false)
   const [isAddCardModalOpen, setIsAddCardModalOpen] = useState(false)
+  const [isAddCheckModalOpen, setIsAddCheckModalOpen] = useState(false)
 
-  const { results: searchResults, loading: searchLoading, error: searchError } = useCardSearch(
-    searchQuery,
+  const { results: cardSearchResults, loading: cardSearchLoading, error: cardSearchError } = useCardSearch(
+    activeDrawerType === 'cards' ? cardSearchQuery : '',
     drawers,
   )
 
-  const selectedCellCards = useMemo(() => {
+  const activeItems: DrawerItem[] = activeDrawerType === 'checks' ? checks : cards
+  const activeItemsByCell = activeDrawerType === 'checks' ? checksByCell : cardsByCell
+  const activeLoading = activeDrawerType === 'checks' ? checksLoading : cardsLoading
+  const activeError = activeDrawerType === 'checks' ? checksError : cardsError
+  const activeQuery = activeDrawerType === 'checks' ? checkSearch.query : cardSearchQuery
+  const activeSearchResults: SearchResultItem[] = activeDrawerType === 'checks' ? checkSearch.results : cardSearchResults
+  const activeSearchLoading = activeDrawerType === 'checks' ? checkSearch.isSearching : cardSearchLoading
+  const activeSearchError = activeDrawerType === 'checks' ? checkSearch.error : cardSearchError
+  const setActiveQuery = activeDrawerType === 'checks' ? checkSearch.setQuery : setCardSearchQuery
+
+  const selectedCellItems = useMemo(() => {
     if (!selectedCellKey) return []
-    return cardsByCell.get(selectedCellKey) ?? []
-  }, [cardsByCell, selectedCellKey])
+    return activeItemsByCell.get(selectedCellKey) ?? []
+  }, [activeItemsByCell, selectedCellKey])
 
-  const selectedCard = useMemo(() => {
-    if (selectedCardId === null) return null
-    return cards.find((card) => card.id === selectedCardId) ?? null
-  }, [cards, selectedCardId])
-
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  const selectedItem = useMemo(() => {
+    if (selectedItemId === null) return null
+    return activeItems.find((item) => item.id === selectedItemId) ?? null
+  }, [activeItems, selectedItemId])
 
   const handleSelectCell = (row: number, col: number) => {
     const nextCellKey = cellKey(row, col)
@@ -87,146 +115,168 @@ function AppInner() {
 
     if (selectedCellKey === nextCellKey) {
       setSelectedCellKey(null)
-      setSelectedCardId(null)
+      setSelectedItemId(null)
       return
     }
 
-    const nextCards = cardsByCell.get(nextCellKey) ?? []
-    const nextSelectedCard = nextCards[nextCards.length - 1] ?? null
+    const nextItems = activeItemsByCell.get(nextCellKey) ?? []
+    const nextSelectedItem = nextItems[nextItems.length - 1] ?? null
 
     setSelectedCellKey(nextCellKey)
-    setSelectedCardId(nextSelectedCard?.id ?? null)
+    setSelectedItemId(nextSelectedItem?.id ?? null)
   }
 
-  const handleSelectCard = (card: Card) => {
-    setSelectedCellKey(cellKey(card.row, card.col))
-    setSelectedCardId(card.id)
+  const handleSelectItem = (item: DrawerItem) => {
+    setSelectedCellKey(cellKey(item.row, item.col))
+    setSelectedItemId(item.id)
   }
 
-  const handleSelectSearchResult = (card: SearchResultCard) => {
-    api.highlightCard(card.id).catch((err) => {
-      console.error('Failed to highlight card:', err)
-    })
+  const handleSelectSearchResult = (item: SearchResultItem) => {
+    if (isCheck(item)) {
+      api.highlightCompartment(item.row, item.col).catch((err) => {
+        console.error('Failed to highlight check compartment:', err)
+      })
+    } else {
+      api.highlightCard(item.id).catch((err) => {
+        console.error('Failed to highlight card:', err)
+      })
+    }
 
-    selectDrawer(card.drawer_id)
-    setSelectedCellKey(cellKey(card.row, card.col))
-    setSelectedCardId(card.id)
-    setSearchQuery('')
+    selectDrawer(item.drawer_id)
+    setSelectedCellKey(cellKey(item.row, item.col))
+    setSelectedItemId(item.id)
+    setActiveQuery('')
   }
 
-  const handleMoveCard = async (cardId: number, row: number, col: number, order: number) => {
+  const handleMoveItem = async (itemId: number, row: number, col: number, order: number) => {
     if (selectedDrawerId === null) return
 
     setActionError(null)
 
     try {
-      const updatedCard = await moveCard(cardId, {
+      const payload = {
         row,
         col,
         order,
         drawer_id: selectedDrawerId,
-      })
+      }
+      const updatedItem = activeDrawerType === 'checks'
+        ? await moveCheck(itemId, payload)
+        : await moveCard(itemId, payload)
 
-      if (updatedCard) {
-        setSelectedCellKey(cellKey(updatedCard.row, updatedCard.col))
-        setSelectedCardId(updatedCard.id)
+      if (updatedItem) {
+        setSelectedCellKey(cellKey(updatedItem.row, updatedItem.col))
+        setSelectedItemId(updatedItem.id)
 
-        // Audit log
         addLog({
           operator: user?.displayName ?? 'Unknown',
           actionType: 'move',
-          description: `Moved Card #${cardId} to Row ${row}, Col ${col}`,
+          description: `Moved ${activeDrawerType === 'checks' ? 'Check' : 'Card'} #${itemId} to Row ${row}, Col ${col}`,
         })
       }
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : 'Unable to move card',
-      )
+      setActionError(requestError instanceof Error ? requestError.message : `Unable to move ${activeDrawerType === 'checks' ? 'check' : 'card'}`)
     }
   }
 
-  const handleDeleteCard = async (cardId: number) => {
-    const card = getCardById(cardId) ?? selectedCard
-    const cardCellKey = card ? cellKey(card.row, card.col) : null
-    const wasSelected = selectedCardId === cardId
+  const handleDeleteItem = async (itemId: number) => {
+    const item = activeDrawerType === 'checks' ? getCheckById(itemId) ?? selectedItem : getCardById(itemId) ?? selectedItem
+    const itemCellKey = item ? cellKey(item.row, item.col) : null
+    const wasSelected = selectedItemId === itemId
 
     setActionError(null)
 
     try {
-      await deleteCard(cardId)
+      if (activeDrawerType === 'checks') {
+        await deleteCheck(itemId)
+      } else {
+        await deleteCard(itemId)
+      }
 
-      // Audit log
       addLog({
         operator: user?.displayName ?? 'Unknown',
         actionType: 'delete',
-        description: `Deleted Card #${cardId}${card ? ` from Row ${card.row}, Col ${card.col}` : ''}`,
+        description: `Deleted ${activeDrawerType === 'checks' ? 'Check' : 'Card'} #${itemId}${item ? ` from Row ${item.row}, Col ${item.col}` : ''}`,
       })
 
-      if (wasSelected && cardCellKey) {
-        const remainingCards = cards
-          .filter((candidate) => candidate.id !== cardId)
-          .filter((candidate) => cellKey(candidate.row, candidate.col) === cardCellKey)
-        const nextCard = remainingCards[remainingCards.length - 1] ?? null
+      if (wasSelected && itemCellKey) {
+        const remainingItems = activeItems
+          .filter((candidate) => candidate.id !== itemId)
+          .filter((candidate) => cellKey(candidate.row, candidate.col) === itemCellKey)
+        const nextItem = remainingItems[remainingItems.length - 1] ?? null
 
-        setSelectedCellKey(cardCellKey)
-        setSelectedCardId(nextCard?.id ?? null)
+        setSelectedCellKey(itemCellKey)
+        setSelectedItemId(nextItem?.id ?? null)
       }
     } catch (requestError) {
-      setActionError(
-        requestError instanceof Error ? requestError.message : 'Unable to delete card',
-      )
+      setActionError(requestError instanceof Error ? requestError.message : `Unable to delete ${activeDrawerType === 'checks' ? 'check' : 'card'}`)
     }
   }
 
-  const handleAddDrawerSubmit = async (name: string, rows: number, cols: number) => {
-    try {
-      const newDrawer = await createDrawer({ name, rows, cols })
-      addLog({
-        operator: user?.displayName ?? 'Unknown',
-        actionType: 'create',
-        description: `Created Drawer #${newDrawer.id} "${newDrawer.name}"`,
-      })
-    } catch (err) {
-      throw err
-    }
+  const handleAddDrawerSubmit = async (name: string, rows: number, cols: number, drawerType: DrawerType) => {
+    const newDrawer = await createDrawer({ name, rows, cols, drawer_type: drawerType })
+    setSelectedCellKey(null)
+    setSelectedItemId(null)
+    addLog({
+      operator: user?.displayName ?? 'Unknown',
+      actionType: 'create',
+      description: `Created ${drawerType === 'checks' ? 'Check' : 'Card'} Drawer #${newDrawer.id} "${newDrawer.name}"`,
+    })
   }
 
-  const handleAddCardSubmit = async (cardholder_name: string, card_number: string, expiration_date: string, card_type: import('./types').CardType) => {
+  const handleAddCardSubmit = async (cardholderName: string, cardNumber: string, expirationDate: string, cardType: CardType) => {
     if (selectedDrawerId === null || !selectedCellKey) return
     const [rowStr, colStr] = selectedCellKey.split(':')
     const row = parseInt(rowStr, 10)
     const col = parseInt(colStr, 10)
-    const order = selectedCellCards.length + 1
+    const order = selectedCellItems.length + 1
 
-    try {
-      const newCard = await addCard({
-        cardholder_name,
-        card_number,
-        expiration_date,
-        card_type,
-        drawer_id: selectedDrawerId,
-        row,
-        col,
-        order,
-      })
-      addLog({
-        operator: user?.displayName ?? 'Unknown',
-        actionType: 'create',
-        description: `Added Card #${newCard.id} to Drawer #${selectedDrawerId} (Row ${row}, Col ${col})`,
-      })
-      setSelectedCardId(newCard.id)
-    } catch (err) {
-      throw err
-    }
+    const newCard = await addCard({
+      cardholder_name: cardholderName,
+      card_number: cardNumber,
+      expiration_date: expirationDate,
+      card_type: cardType,
+      drawer_id: selectedDrawerId,
+      row,
+      col,
+      order,
+    })
+    addLog({
+      operator: user?.displayName ?? 'Unknown',
+      actionType: 'create',
+      description: `Added Card #${newCard.id} to Drawer #${selectedDrawerId} (Row ${row}, Col ${col})`,
+    })
+    setSelectedItemId(newCard.id)
   }
 
-  // ── If not logged in ──────────────────────────────────────────────────────
+  const handleAddCheckSubmit = async (clientName: string, checkNumber: string, montant: number, carnetSize: CarnetSize) => {
+    if (selectedDrawerId === null || !selectedCellKey) return
+    const [rowStr, colStr] = selectedCellKey.split(':')
+    const row = parseInt(rowStr, 10)
+    const col = parseInt(colStr, 10)
+    const order = selectedCellItems.length + 1
+
+    const newCheck = await addCheck({
+      client_name: clientName,
+      check_number: checkNumber,
+      montant,
+      carnet_size: carnetSize,
+      drawer_id: selectedDrawerId,
+      row,
+      col,
+      order,
+    })
+    addLog({
+      operator: user?.displayName ?? 'Unknown',
+      actionType: 'create',
+      description: `Added Check #${newCheck.id} to Drawer #${selectedDrawerId} (Row ${row}, Col ${col})`,
+    })
+    setSelectedItemId(newCheck.id)
+  }
 
   if (!user) {
     return <Login />
   }
-
-  // ── Shared header ─────────────────────────────────────────────────────────
 
   const header = (
     <header className="app-header">
@@ -239,14 +289,14 @@ function AppInner() {
       </div>
 
       <div className="app-search">
-        <SearchBar value={searchQuery} onChange={setSearchQuery} loading={searchLoading} />
+        <SearchBar value={activeQuery} onChange={setActiveQuery} loading={activeSearchLoading} />
         <SearchResults
-          query={searchQuery}
-          results={searchResults}
-          loading={searchLoading}
-          error={searchError}
+          query={activeQuery}
+          results={activeSearchResults}
+          loading={activeSearchLoading}
+          error={activeSearchError}
           onSelectResult={handleSelectSearchResult}
-          onDragCard={() => {}}
+          onDragItem={() => {}}
         />
       </div>
     </header>
@@ -259,7 +309,7 @@ function AppInner() {
         onClose={() => setIsAddDrawerModalOpen(false)}
         onSubmit={handleAddDrawerSubmit}
       />
-      {selectedDrawer && selectedCellKey && (
+      {selectedDrawer && selectedCellKey && activeDrawerType === 'cards' ? (
         <AddCardModal
           isOpen={isAddCardModalOpen}
           onClose={() => setIsAddCardModalOpen(false)}
@@ -268,11 +318,54 @@ function AppInner() {
           row={parseInt(selectedCellKey.split(':')[0], 10)}
           col={parseInt(selectedCellKey.split(':')[1], 10)}
         />
-      )}
+      ) : null}
+      {selectedDrawer && selectedCellKey && activeDrawerType === 'checks' ? (
+        <AddCheckModal
+          isOpen={isAddCheckModalOpen}
+          onClose={() => setIsAddCheckModalOpen(false)}
+          onSubmit={handleAddCheckSubmit}
+          drawerName={selectedDrawer.name}
+          row={parseInt(selectedCellKey.split(':')[0], 10)}
+          col={parseInt(selectedCellKey.split(':')[1], 10)}
+        />
+      ) : null}
     </>
   )
 
-  // ── Admin view ────────────────────────────────────────────────────────────
+  const workspace = (
+    <WorkspaceView
+      drawers={drawers}
+      selectedDrawer={selectedDrawer}
+      selectedDrawerId={selectedDrawerId}
+      drawersLoading={drawersLoading}
+      drawersError={drawersError}
+      itemsLoading={activeLoading}
+      itemsError={activeError}
+      items={activeItems}
+      selectedCellKey={selectedCellKey}
+      selectedCellItems={selectedCellItems}
+      selectedItem={selectedItem}
+      selectedItemId={selectedItemId}
+      actionError={actionError}
+      onSelectDrawer={(drawerId) => {
+        selectDrawer(drawerId)
+        setSelectedCellKey(null)
+        setSelectedItemId(null)
+      }}
+      onSelectCell={handleSelectCell}
+      onSelectItem={handleSelectItem}
+      onMoveItem={handleMoveItem}
+      onDeleteItem={handleDeleteItem}
+      onAddDrawerClick={() => setIsAddDrawerModalOpen(true)}
+      onAddItemClick={() => {
+        if (activeDrawerType === 'checks') {
+          setIsAddCheckModalOpen(true)
+        } else {
+          setIsAddCardModalOpen(true)
+        }
+      }}
+    />
+  )
 
   if (user.role === 'admin') {
     return (
@@ -280,7 +373,6 @@ function AppInner() {
         {header}
         {modals}
 
-        {/* Admin navigation bar */}
         <nav className="nav-bar" aria-label="Admin navigation">
           <div className="drawer-tabs">
             <button
@@ -289,17 +381,7 @@ function AppInner() {
               className={['drawer-tabs__item', adminView === 'workspace' ? 'is-active' : ''].join(' ')}
               onClick={() => setAdminView('workspace')}
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="3" y="3" width="7" height="7" />
                 <rect x="14" y="3" width="7" height="7" />
                 <rect x="3" y="14" width="7" height="7" />
@@ -314,17 +396,7 @@ function AppInner() {
               className={['drawer-tabs__item', adminView === 'dashboard' ? 'is-active' : ''].join(' ')}
               onClick={() => setAdminView('dashboard')}
             >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M3 3h7v4H3z" />
                 <path d="M14 3h7v9h-7z" />
                 <path d="M3 11h7v10H3z" />
@@ -339,48 +411,16 @@ function AppInner() {
               <span className="badge badge--active">{user.role}</span>
               {user.displayName}
             </span>
-            <button
-              type="button"
-              id="logout-btn"
-              className="action-button"
-              onClick={logout}
-            >
+            <button type="button" id="logout-btn" className="action-button" onClick={logout}>
               Sign out
             </button>
           </div>
         </nav>
 
-        {adminView === 'workspace' ? (
-          <WorkspaceView
-            drawers={drawers}
-            selectedDrawer={selectedDrawer}
-            selectedDrawerId={selectedDrawerId}
-            drawersLoading={drawersLoading}
-            drawersError={drawersError}
-            cardsLoading={cardsLoading}
-            cardsError={cardsError}
-            cards={cards}
-            selectedCellKey={selectedCellKey}
-            selectedCellCards={selectedCellCards}
-            selectedCard={selectedCard}
-            selectedCardId={selectedCardId}
-            actionError={actionError}
-            onSelectDrawer={selectDrawer}
-            onSelectCell={handleSelectCell}
-            onSelectCard={handleSelectCard}
-            onMoveCard={handleMoveCard}
-            onDeleteCard={handleDeleteCard}
-            onAddDrawerClick={() => setIsAddDrawerModalOpen(true)}
-            onAddCardClick={() => setIsAddCardModalOpen(true)}
-          />
-        ) : (
-          <AdminDashboard />
-        )}
+        {adminView === 'workspace' ? workspace : <AdminDashboard />}
       </div>
     )
   }
-
-  // ── Operator view ─────────────────────────────────────────────────────────
 
   return (
     <div className="app-shell">
@@ -393,44 +433,16 @@ function AppInner() {
             <span className="badge badge--active">{user.role}</span>
             {user.displayName}
           </span>
-          <button
-            type="button"
-            id="logout-btn"
-            className="action-button"
-            onClick={logout}
-          >
+          <button type="button" id="logout-btn" className="action-button" onClick={logout}>
             Sign out
           </button>
         </div>
       </div>
 
-      <WorkspaceView
-        drawers={drawers}
-        selectedDrawer={selectedDrawer}
-        selectedDrawerId={selectedDrawerId}
-        drawersLoading={drawersLoading}
-        drawersError={drawersError}
-        cardsLoading={cardsLoading}
-        cardsError={cardsError}
-        cards={cards}
-        selectedCellKey={selectedCellKey}
-        selectedCellCards={selectedCellCards}
-        selectedCard={selectedCard}
-        selectedCardId={selectedCardId}
-        actionError={actionError}
-        onSelectDrawer={selectDrawer}
-        onSelectCell={handleSelectCell}
-        onSelectCard={handleSelectCard}
-        onMoveCard={handleMoveCard}
-        onDeleteCard={handleDeleteCard}
-        onAddDrawerClick={() => setIsAddDrawerModalOpen(true)}
-        onAddCardClick={() => setIsAddCardModalOpen(true)}
-      />
+      {workspace}
     </div>
   )
 }
-
-// ─── Workspace view (extracted for reuse) ────────────────────────────────────
 
 interface WorkspaceViewProps {
   drawers: ReturnType<typeof useDrawers>['drawers']
@@ -438,21 +450,21 @@ interface WorkspaceViewProps {
   selectedDrawerId: ReturnType<typeof useDrawers>['selectedDrawerId']
   drawersLoading: boolean
   drawersError: string | null
-  cardsLoading: boolean
-  cardsError: string | null
-  cards: Card[]
+  itemsLoading: boolean
+  itemsError: string | null
+  items: DrawerItem[]
   selectedCellKey: string | null
-  selectedCellCards: Card[]
-  selectedCard: Card | null
-  selectedCardId: number | null
+  selectedCellItems: DrawerItem[]
+  selectedItem: DrawerItem | null
+  selectedItemId: number | null
   actionError: string | null
   onSelectDrawer: (id: number) => void
   onSelectCell: (row: number, col: number) => void
-  onSelectCard: (card: Card) => void
-  onMoveCard: (cardId: number, row: number, col: number, order: number) => void
-  onDeleteCard: (cardId: number) => void
+  onSelectItem: (item: DrawerItem) => void
+  onMoveItem: (itemId: number, row: number, col: number, order: number) => void
+  onDeleteItem: (itemId: number) => void
   onAddDrawerClick: () => void
-  onAddCardClick: () => void
+  onAddItemClick: () => void
 }
 
 function WorkspaceView({
@@ -461,29 +473,31 @@ function WorkspaceView({
   selectedDrawerId,
   drawersLoading,
   drawersError,
-  cardsLoading,
-  cardsError,
-  cards,
+  itemsLoading,
+  itemsError,
+  items,
   selectedCellKey,
-  selectedCellCards,
-  selectedCard,
-  selectedCardId,
+  selectedCellItems,
+  selectedItem,
+  selectedItemId,
   actionError,
   onSelectDrawer,
   onSelectCell,
-  onSelectCard,
-  onMoveCard,
-  onDeleteCard,
+  onSelectItem,
+  onMoveItem,
+  onDeleteItem,
   onAddDrawerClick,
-  onAddCardClick,
+  onAddItemClick,
 }: WorkspaceViewProps) {
+  const itemLabel = selectedDrawer?.drawer_type === 'checks' ? 'checks' : 'cards'
+
   return (
     <main className="workspace">
       <section className="workspace__board">
         {actionError ? <div className="status-panel status-panel--error">{actionError}</div> : null}
 
         {drawersLoading ? (
-          <div className="status-panel">Loading drawers…</div>
+          <div className="status-panel">Loading drawers...</div>
         ) : drawersError ? (
           <div className="status-panel status-panel--error">{drawersError}</div>
         ) : selectedDrawer ? (
@@ -495,19 +509,19 @@ function WorkspaceView({
               onAddDrawerClick={onAddDrawerClick}
             />
 
-            {cardsError ? (
-              <div className="status-panel status-panel--error">{cardsError}</div>
+            {itemsError ? (
+              <div className="status-panel status-panel--error">{itemsError}</div>
             ) : null}
 
             <DrawerBoard
               drawer={selectedDrawer}
-              cards={cards}
+              items={items}
               selectedCellKey={selectedCellKey}
               onSelectCell={onSelectCell}
-              onMoveCard={onMoveCard}
+              onMoveItem={onMoveItem}
             />
 
-            {cardsLoading ? <div className="loading-strip">Loading cards…</div> : null}
+            {itemsLoading ? <div className="loading-strip">Loading {itemLabel}...</div> : null}
           </>
         ) : (
           <div className="status-panel">No drawers available.</div>
@@ -517,19 +531,17 @@ function WorkspaceView({
       <SelectionInspector
         drawer={selectedDrawer}
         selectedCellKey={selectedCellKey}
-        selectedCellCards={selectedCellCards}
-        selectedCard={selectedCard}
-        selectedCardId={selectedCardId}
-        onSelectCard={onSelectCard}
-        onDragCard={() => {}}
-        onDeleteCard={onDeleteCard}
-        onAddCardClick={onAddCardClick}
+        selectedCellItems={selectedCellItems}
+        selectedItem={selectedItem}
+        selectedItemId={selectedItemId}
+        onSelectItem={onSelectItem}
+        onDragItem={() => {}}
+        onDeleteItem={onDeleteItem}
+        onAddItemClick={onAddItemClick}
       />
     </main>
   )
 }
-
-// ─── Root with providers ──────────────────────────────────────────────────────
 
 function App() {
   return (

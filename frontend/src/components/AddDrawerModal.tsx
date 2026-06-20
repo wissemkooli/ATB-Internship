@@ -1,15 +1,17 @@
 import { useState } from 'react'
+import type { DrawerType } from '../types'
 
 interface AddDrawerModalProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (name: string, rows: number, cols: number) => Promise<void>
+  onSubmit: (name: string, rows: number, cols: number, drawerType: DrawerType) => Promise<void>
 }
 
 export function AddDrawerModal({ isOpen, onClose, onSubmit }: AddDrawerModalProps) {
   const [name, setName] = useState('')
   const [rows, setRows] = useState(5)
   const [cols, setCols] = useState(5)
+  const [drawerType, setDrawerType] = useState<DrawerType>('cards')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -20,10 +22,11 @@ export function AddDrawerModal({ isOpen, onClose, onSubmit }: AddDrawerModalProp
     setLoading(true)
     setError(null)
     try {
-      await onSubmit(name, rows, cols)
+      await onSubmit(name, rows, cols, drawerType)
       setName('')
       setRows(5)
       setCols(5)
+      setDrawerType('cards')
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add drawer')
@@ -76,6 +79,17 @@ export function AddDrawerModal({ isOpen, onClose, onSubmit }: AddDrawerModalProp
                 required
                 min={1}
               />
+            </div>
+            <div className="modal-form__field">
+              <label className="modal-form__label">Drawer Type</label>
+              <select
+                className="modal-form__select"
+                value={drawerType}
+                onChange={(e) => setDrawerType(e.target.value as DrawerType)}
+              >
+                <option value="cards">Cards</option>
+                <option value="checks">Checks</option>
+              </select>
             </div>
           </div>
           <div className="modal__footer">

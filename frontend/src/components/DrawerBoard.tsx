@@ -1,13 +1,13 @@
 import { useMemo } from 'react'
-import type { Card, Drawer } from '../types'
+import type { Drawer, DrawerItem } from '../types'
 import { DrawerCell } from './DrawerCell'
 
 interface DrawerBoardProps {
   drawer: Drawer
-  cards: Card[]
+  items: DrawerItem[]
   selectedCellKey: string | null
   onSelectCell: (row: number, col: number) => void
-  onMoveCard: (cardId: number, row: number, col: number, order: number) => void
+  onMoveItem: (itemId: number, row: number, col: number, order: number) => void
 }
 
 const getColumnLabel = (index: number) => {
@@ -25,10 +25,10 @@ const getColumnLabel = (index: number) => {
 
 export function DrawerBoard({
   drawer,
-  cards,
+  items,
   selectedCellKey,
   onSelectCell,
-  onMoveCard,
+  onMoveItem,
 }: DrawerBoardProps) {
   const columns = useMemo(
     () => Array.from({ length: drawer.cols }, (_, index) => index + 1),
@@ -45,16 +45,16 @@ export function DrawerBoard({
     [drawer.rows],
   )
 
-  const cardsByCell = useMemo(() => {
-    const grouped = new Map<string, Card[]>()
+  const itemsByCell = useMemo(() => {
+    const grouped = new Map<string, DrawerItem[]>()
 
-    for (const card of cards) {
-      const key = `${card.row}:${card.col}`
+    for (const item of items) {
+      const key = `${item.row}:${item.col}`
       const bucket = grouped.get(key)
       if (bucket) {
-        bucket.push(card)
+        bucket.push(item)
       } else {
-        grouped.set(key, [card])
+        grouped.set(key, [item])
       }
     }
 
@@ -63,7 +63,9 @@ export function DrawerBoard({
     }
 
     return grouped
-  }, [cards])
+  }, [items])
+
+  const itemLabel = drawer.drawer_type === 'checks' ? 'checks' : 'cards'
 
   return (
     <div className="board">
@@ -75,7 +77,7 @@ export function DrawerBoard({
         <div className="board__specs">
           <span>{drawer.rows} rows</span>
           <span>{drawer.cols} columns</span>
-          <span>{cards.length} cards</span>
+          <span>{items.length} {itemLabel}</span>
         </div>
       </div>
 
@@ -107,17 +109,17 @@ export function DrawerBoard({
 
               {columns.map((col) => {
                 const cellKey = `${row}:${col}`
-                const cellCards = cardsByCell.get(cellKey) ?? []
+                const cellItems = itemsByCell.get(cellKey) ?? []
 
                 return (
                   <DrawerCell
                     key={cellKey}
                     row={row}
                     col={col}
-                    cards={cellCards}
+                    items={cellItems}
                     selected={selectedCellKey === cellKey}
                     onSelectCell={onSelectCell}
-                    onMoveCard={onMoveCard}
+                    onMoveItem={onMoveItem}
                   />
                 )
               })}
